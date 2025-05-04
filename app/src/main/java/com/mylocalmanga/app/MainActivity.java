@@ -1,37 +1,69 @@
 package com.mylocalmanga.app;
 
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.app.AlertDialog;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.appcompat.app.AppCompatActivity;
-import java.util.Map;
-import java.util.HashMap;
+
 public class MainActivity extends AppCompatActivity {
     WebView web;
+
+    String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000"; // IP Tailscale
+    String IP_2 = "http://192.168.1.192323:3000";                         // Localhost
+    boolean useIP1 = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         web = new WebView(this);
+        setContentView(web); // ✅ Không dùng SwipeRefreshLayout
 
         // 👉 Bật JS và các quyền truy cập cần thiết
         WebSettings webSettings = web.getSettings();
         webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true); // ✅ Cho phép localStorage nếu web có dùng
-        webSettings.setAllowFileAccess(true);    // ✅ Cho phép load file nếu có
+        webSettings.setDomStorageEnabled(true); // ✅ localStorage
+        webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); // ✅ Cho phép HTTP nội bộ
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT); // ✅ Bật cache
 
         web.setWebViewClient(new WebViewClient());
-        Map<String, String> headers = new HashMap<>();
 
-//
-        String IP="http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
-        web.loadUrl(IP); // Thay đúng IP Tailscale cua PC
+        web.loadUrl(IP_1); // ✅ Load mặc định
+    }
 
-        setContentView(web);
+    // ✅ Thêm nút menu "Chọn địa chỉ"
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add("Chọn địa chỉ");
+        return true;
+    }
+
+    // ✅ Show dialog chọn IP
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getTitle().equals("Chọn địa chỉ")) {
+            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)"};
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Chọn server:");
+            builder.setItems(options, (dialog, which) -> {
+                if (which == 0) {
+                    useIP1 = true;
+                    web.loadUrl(IP_1);
+                } else {
+                    useIP1 = false;
+                    web.loadUrl(IP_2);
+                }
+            });
+            builder.show();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
