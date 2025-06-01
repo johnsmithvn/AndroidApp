@@ -1,12 +1,12 @@
 package com.mylocalmanga.app;
 
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
-import android.net.Uri;
+import android.content.res.Configuration;
 import android.os.Bundle;
-import android.view.GestureDetector;
-import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
 import android.widget.ImageButton;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -16,88 +16,85 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
 
 public class ExoPlayerActivity extends AppCompatActivity {
+
     private ExoPlayer player;
     private PlayerView playerView;
+    private ImageButton btnClose, btnRotate, btnRatio;
+    private boolean isZoomed = false; // track chế độ fit/zoom
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_exoplayer); // Layout này cần có nền đen
 
-        // ✅ Mở mặc định ở chế độ ngang
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        // ✅ Fullscreen toàn diện: ẩn thanh trạng thái + thanh điều hướng
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
+        // ✅ Gắn layout components
         playerView = findViewById(R.id.player_view);
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
+        btnClose = findViewById(R.id.btn_close);
+        btnRotate = findViewById(R.id.btn_rotate);
+        btnRatio = findViewById(R.id.btn_ratio);
 
-        // ✅ Nhận URL video
-        String videoUrl = getIntent().getStringExtra("videoUrl");
+        // ✅ Nhận dữ liệu từ Intent
+        Intent intent = getIntent();
+        String videoUrl = intent.getStringExtra("videoUrl");
+        String videoListJson = intent.getStringExtra("videoListJson"); // (sẽ xử lý sau)
+
+        // ❌ Nếu không có URL thì thoát
         if (videoUrl == null || videoUrl.isEmpty()) {
-            Toast.makeText(this, "❌ Thiếu video URL", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        MediaItem item = MediaItem.fromUri(Uri.parse(videoUrl));
-        player.setMediaItem(item);
+        // ✅ Khởi tạo ExoPlayer
+        player = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(player);
+        player.setMediaItem(MediaItem.fromUri(videoUrl));
         player.prepare();
-        player.play();
+        player.setPlayWhenReady(true);
 
-        // ✅ Double tap để tua
-        GestureDetector gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-            @Override
-            public boolean onDoubleTap(MotionEvent e) {
-                float x = e.getX();
-                float width = playerView.getWidth();
-                if (x < width / 2) {
-                    player.seekTo(Math.max(0, player.getCurrentPosition() - 10000));
-                    Toast.makeText(ExoPlayerActivity.this, "⏪ Lùi 10s", Toast.LENGTH_SHORT).show();
-                } else {
-                    player.seekTo(Math.min(player.getDuration(), player.getCurrentPosition() + 10000));
-                    Toast.makeText(ExoPlayerActivity.this, "⏩ Tua 10s", Toast.LENGTH_SHORT).show();
-                }
-                return true;
-            }
-        });
-        playerView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
+        // ⚙️ Mặc định fit video
+        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
 
-        // ❌ Nút đóng
-        findViewById(R.id.btn_close).setOnClickListener(v -> finish());
+        // ⛔ Nút đóng
+        btnClose.setOnClickListener(v -> finish());
 
-        // 📐 Nút đổi tỷ lệ video
-        ImageButton ratioBtn = findViewById(R.id.btn_ratio);
-        final int[] modes = {
-                AspectRatioFrameLayout.RESIZE_MODE_FIT,
-                AspectRatioFrameLayout.RESIZE_MODE_FILL,
-                AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        };
-        final String[] labels = {"📺 Fit", "🖼 Fill", "🔍 Zoom"};
-        final int[] index = {0};
-
-        ratioBtn.setOnClickListener(v -> {
-            index[0] = (index[0] + 1) % modes.length;
-            playerView.setResizeMode(modes[index[0]]);
-            Toast.makeText(this, "Tỷ lệ: " + labels[index[0]], Toast.LENGTH_SHORT).show();
+        // 🔁 Xoay ngang/dọc
+        btnRotate.setOnClickListener(v -> {
+            int orientation = getResources().getConfiguration().orientation;
+            setRequestedOrientation(
+                    orientation == Configuration.ORIENTATION_LANDSCAPE
+                            ? ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                            : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            );
         });
 
-        // 🔁 Nút xoay màn hình
-        ImageButton rotateBtn = findViewById(R.id.btn_rotate);
-        rotateBtn.setOnClickListener(v -> {
-            int current = getRequestedOrientation();
-            if (current == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
-                Toast.makeText(this, "↕️ Đã chuyển dọc", Toast.LENGTH_SHORT).show();
-            } else {
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-                Toast.makeText(this, "↔️ Đã chuyển ngang", Toast.LENGTH_SHORT).show();
-            }
+        // 🔍 Đổi chế độ zoom/fit
+        btnRatio.setOnClickListener(v -> {
+            isZoomed = !isZoomed;
+            playerView.setResizeMode(
+                    isZoomed
+                            ? AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            : AspectRatioFrameLayout.RESIZE_MODE_FIT
+            );
         });
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (player != null) player.release();
+        if (player != null) {
+            player.release();
+            player = null;
+        }
     }
 }

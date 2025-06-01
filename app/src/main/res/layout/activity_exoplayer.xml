@@ -1,15 +1,14 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#000000"> <!-- 👈 nền đen -->
 
-    <!-- 🎥 ExoPlayer view -->
     <com.google.android.exoplayer2.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:keepScreenOn="true" />
 
-    <!-- ❌ Nút đóng -->
     <ImageButton
         android:id="@+id/btn_close"
         android:layout_width="48dp"
@@ -17,10 +16,8 @@
         android:layout_gravity="top|end"
         android:layout_margin="16dp"
         android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_menu_close_clear_cancel"
-        android:contentDescription="Đóng" />
+        android:src="@android:drawable/ic_menu_close_clear_cancel" />
 
-    <!-- 📐 Nút đổi tỷ lệ -->
     <ImageButton
         android:id="@+id/btn_ratio"
         android:layout_width="48dp"
@@ -28,10 +25,8 @@
         android:layout_gravity="top|start"
         android:layout_margin="16dp"
         android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_menu_crop"
-        android:contentDescription="Tỷ lệ" />
+        android:src="@android:drawable/ic_menu_crop" />
 
-    <!-- 🔁 Nút xoay màn hình -->
     <ImageButton
         android:id="@+id/btn_rotate"
         android:layout_width="48dp"
@@ -39,6 +34,5 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:background="@android:color/transparent"
-        android:src="@android:drawable/ic_menu_always_landscape_portrait"
-        android:contentDescription="Xoay" />
+        android:src="@android:drawable/ic_menu_always_landscape_portrait" />
 </FrameLayout>

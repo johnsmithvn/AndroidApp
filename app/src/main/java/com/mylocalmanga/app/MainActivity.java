@@ -7,44 +7,48 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.ImageButton;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebChromeClient;
-import android.webkit.WebChromeClient.CustomViewCallback;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
+import android.content.SharedPreferences;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
     private WebView web;
     private View mCustomView;
-    private CustomViewCallback mCustomViewCallback;
-    private ImageButton ipSwitchBtn;
+    private WebChromeClient.CustomViewCallback mCustomViewCallback;
     private FrameLayout rootLayout;
+    private FrameLayout fullscreenContainer;
+    private ImageButton ipSwitchBtn;
 
-    private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000"; // Tailscale
-    private final String IP_2 = "http://192.168.1.99:3000";                      // Localhost
-    private boolean useIP1 = true;
+    private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
+    private final String IP_2 = "http://192.168.1.99:3000";
+
+    private static final String PREF_NAME = "AppPrefs";
+    private static final String KEY_LAST_IP = "last_used_ip";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // ✅ Layout gốc chứa WebView và các view phụ
+        // ✅ Tạo layout gốc
         rootLayout = new FrameLayout(this);
         web = new WebView(this);
         rootLayout.addView(web);
 
-        // ✅ Tạo nút chọn IP (ban đầu ẩn)
+        // ✅ Tạo nút đổi IP
         ipSwitchBtn = new ImageButton(this);
         ipSwitchBtn.setImageResource(android.R.drawable.ic_menu_manage);
         ipSwitchBtn.setBackgroundColor(Color.TRANSPARENT);
-        ipSwitchBtn.setVisibility(View.GONE); // mặc định ẩn
+        ipSwitchBtn.setVisibility(View.GONE);
 
         FrameLayout.LayoutParams btnParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -65,10 +69,9 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        // ✅ Bắt lỗi toàn trang (main frame)
+        // ✅ Bắt lỗi trang
         web.setWebViewClient(new WebViewClient() {
             @Override
-            @SuppressWarnings("deprecation")
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 ipSwitchBtn.setVisibility(View.VISIBLE);
                 Toast.makeText(MainActivity.this, "🌐 Web lỗi: " + description, Toast.LENGTH_SHORT).show();
@@ -76,11 +79,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                ipSwitchBtn.setVisibility(View.GONE); // ✅ ẩn khi load thành công
+                ipSwitchBtn.setVisibility(View.GONE);
             }
         });
 
-        // ✅ Fullscreen video + fallback xử lý lỗi DNS
+        // ✅ Xử lý fullscreen video HTML5
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
@@ -89,54 +92,75 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                // 👉 Ẩn system UI
+                getWindow().getDecorView().setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                );
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+
                 mCustomView = view;
                 mCustomViewCallback = callback;
-                rootLayout.addView(view); // overlay full video
+
+                fullscreenContainer = new FrameLayout(MainActivity.this);
+                fullscreenContainer.setBackgroundColor(Color.BLACK);
+                fullscreenContainer.addView(view);
+
+                rootLayout.addView(fullscreenContainer);
+                web.setVisibility(View.GONE);
             }
 
             @Override
             public void onHideCustomView() {
                 if (mCustomView == null) return;
 
-                rootLayout.removeView(mCustomView);
+                rootLayout.removeView(fullscreenContainer);
+                fullscreenContainer = null;
+
                 mCustomView = null;
                 mCustomViewCallback.onCustomViewHidden();
                 mCustomViewCallback = null;
 
+                // 👉 Reset UI
+                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                web.setVisibility(View.VISIBLE);
             }
 
             @Override
             public void onReceivedTitle(WebView view, String title) {
-                // ✅ Nếu WebView hiện trang lỗi hệ thống (DNS, domain sai)
                 if (title != null && title.toLowerCase().contains("không khả dụng")) {
                     ipSwitchBtn.setVisibility(View.VISIBLE);
                 }
             }
         });
 
-        // ✅ Sự kiện nút chọn IP
+        // ✅ Nút đổi IP
         ipSwitchBtn.setOnClickListener(v -> {
             String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)"};
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Chọn server:");
             builder.setItems(options, (dialog, which) -> {
-                if (which == 0) {
-                    useIP1 = true;
-                    web.loadUrl(IP_1);
-                } else {
-                    useIP1 = false;
-                    web.loadUrl(IP_2);
-                }
+                String selectedIp = (which == 0) ? IP_1 : IP_2;
+
+                // ✅ Lưu IP đã chọn
+                getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                        .edit()
+                        .putString(KEY_LAST_IP, selectedIp)
+                        .apply();
+
+                web.loadUrl(selectedIp);
             });
             builder.show();
         });
 
-        // ✅ Load trang mặc định
-        web.loadUrl(IP_1);
-
-        // ✅ Cho phép JS gọi native mở ExoPlayer
+        // ✅ Giao tiếp với JS để mở ExoPlayer
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
             public void openExoPlayer(String url) {
@@ -145,6 +169,11 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         }, "Android");
+
+        // ✅ Load IP đã lưu (nếu có), mặc định IP_1
+        String lastIp = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                .getString(KEY_LAST_IP, IP_1);
+        web.loadUrl(lastIp);
     }
 
     @Override
