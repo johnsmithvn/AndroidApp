@@ -9,7 +9,6 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
-import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -63,11 +62,6 @@ public class ExoPlayerActivity extends AppCompatActivity {
         // ✅ Khởi tạo ExoPlayer
         player = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(player);
-        // Make player controls background translucent
-        View controller = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_controller);
-        if (controller != null) {
-            controller.setBackgroundColor(Color.parseColor("#66000000"));
-        }
         player.setMediaItem(MediaItem.fromUri(videoUrl));
         player.prepare();
         player.setPlayWhenReady(true);
