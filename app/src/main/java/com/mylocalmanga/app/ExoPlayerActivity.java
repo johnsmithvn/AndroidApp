@@ -25,12 +25,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
     private boolean isZoomed = false; // track chế độ fit/zoom
     private GestureDetector gestureDetector;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_exoplayer); // Layout này cần có nền đen
-
-        // ✅ Fullscreen toàn diện: ẩn thanh trạng thái + thanh điều hướng
+    private void hideSystemUI() {
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                         | View.SYSTEM_UI_FLAG_FULLSCREEN
@@ -39,6 +34,15 @@ public class ExoPlayerActivity extends AppCompatActivity {
                         | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_exoplayer); // Layout này cần có nền đen
+
+        // ✅ Fullscreen toàn diện: ẩn thanh trạng thái + thanh điều hướng
+        hideSystemUI();
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // ✅ Gắn layout components
@@ -68,6 +72,23 @@ public class ExoPlayerActivity extends AppCompatActivity {
                     }
                     return true;
                 }
+                return false;
+            }
+        });
+        gestureDetector.setOnDoubleTapListener(new GestureDetector.OnDoubleTapListener() {
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                seekForward();
+                return true;
+            }
+
+            @Override
+            public boolean onDoubleTapEvent(MotionEvent e) {
+                return false;
+            }
+
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
                 return false;
             }
         });
@@ -117,6 +138,14 @@ public class ExoPlayerActivity extends AppCompatActivity {
                             : AspectRatioFrameLayout.RESIZE_MODE_FIT
             );
         });
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUI();
+        }
     }
 
     @Override
