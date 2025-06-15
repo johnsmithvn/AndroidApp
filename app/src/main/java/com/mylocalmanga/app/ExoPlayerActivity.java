@@ -103,11 +103,11 @@ public class ExoPlayerActivity extends AppCompatActivity {
 
         // Gesture handling
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-            private long startSeekPosition;
+            private long currentSeekPosition;
 
             @Override
             public boolean onDown(MotionEvent e) {
-                startSeekPosition = player.getCurrentPosition();
+                currentSeekPosition = player.getCurrentPosition();
                 return true;
             }
 
@@ -148,13 +148,14 @@ public class ExoPlayerActivity extends AppCompatActivity {
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                 if (Math.abs(distanceX) > Math.abs(distanceY)) {
                     long offset = (long) (-distanceX * 100); // 100ms per pixel
-                    long newPos = startSeekPosition + offset;
+                    long newPos = currentSeekPosition + offset;
                     long dur = player.getDuration();
                     if (dur != C.TIME_UNSET) {
                         newPos = Math.max(0, Math.min(newPos, dur));
                     } else {
                         newPos = Math.max(0, newPos);
                     }
+                    currentSeekPosition = newPos;
                     player.seekTo(newPos);
                     return true;
                 }
