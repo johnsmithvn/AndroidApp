@@ -23,8 +23,14 @@ public class ExoPlayerActivity extends AppCompatActivity {
     private ExoPlayer player;
     private PlayerView playerView;
     private ImageButton btnClose, btnRotate, btnRatio;
+    private View overlayRewind, overlayForward;
     private boolean isZoomed = false; // track chế độ fit/zoom
     private GestureDetector gestureDetector;
+
+    private void showOverlay(View v) {
+        v.setVisibility(View.VISIBLE);
+        v.postDelayed(() -> v.setVisibility(View.GONE), 500);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,6 +53,8 @@ public class ExoPlayerActivity extends AppCompatActivity {
         btnClose = findViewById(R.id.btn_close);
         btnRotate = findViewById(R.id.btn_rotate);
         btnRatio = findViewById(R.id.btn_ratio);
+        overlayRewind = findViewById(R.id.overlay_rewind);
+        overlayForward = findViewById(R.id.overlay_forward);
 
         // ✅ Nhận dữ liệu từ Intent
         Intent intent = getIntent();
@@ -126,6 +134,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
                     if (pos < 0) {
                         pos = 0;
                     }
+                    showOverlay(overlayRewind);
                 } else {
                     // Fast forward 10 seconds
                     pos = player.getCurrentPosition() + 10000;
@@ -133,6 +142,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
                     if (dur != C.TIME_UNSET) {
                         pos = Math.min(pos, dur);
                     }
+                    showOverlay(overlayForward);
                 }
                 player.seekTo(pos);
                 return true;
