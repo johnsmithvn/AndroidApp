@@ -5,6 +5,8 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.WindowManager;
 import android.widget.ImageButton;
 
@@ -21,6 +23,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
     private PlayerView playerView;
     private ImageButton btnClose, btnRotate, btnRatio;
     private boolean isZoomed = false; // track chế độ fit/zoom
+    private GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +46,33 @@ public class ExoPlayerActivity extends AppCompatActivity {
         btnClose = findViewById(R.id.btn_close);
         btnRotate = findViewById(R.id.btn_rotate);
         btnRatio = findViewById(R.id.btn_ratio);
+
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            private static final int SWIPE_THRESHOLD = 100;
+            private static final int SWIPE_VELOCITY_THRESHOLD = 100;
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                float diffX = e2.getX() - e1.getX();
+                float diffY = e2.getY() - e1.getY();
+                if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX > 0) {
+                        seekForward();
+                    } else {
+                        seekBackward();
+                    }
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        playerView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
 
         // ✅ Nhận dữ liệu từ Intent
         Intent intent = getIntent();
@@ -96,5 +126,19 @@ public class ExoPlayerActivity extends AppCompatActivity {
             player.release();
             player = null;
         }
+    }
+
+    private void seekForward() {
+        if (player == null) return;
+        long newPosition = player.getCurrentPosition() + 10000;
+        if (newPosition > player.getDuration()) newPosition = player.getDuration();
+        player.seekTo(newPosition);
+    }
+
+    private void seekBackward() {
+        if (player == null) return;
+        long newPosition = player.getCurrentPosition() - 10000;
+        if (newPosition < 0) newPosition = 0;
+        player.seekTo(newPosition);
     }
 }
