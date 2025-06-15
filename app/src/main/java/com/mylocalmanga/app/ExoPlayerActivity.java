@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
-import android.graphics.Color;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
@@ -95,12 +94,6 @@ public class ExoPlayerActivity extends AppCompatActivity {
 
         // Auto hide controller after 3s
         playerView.setControllerShowTimeoutMs(3000);
-
-        // Blur background of controller
-        View controller = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_controller);
-        if (controller != null) {
-            controller.setBackgroundColor(Color.parseColor("#66000000"));
-        }
 
         // Gesture handling
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
