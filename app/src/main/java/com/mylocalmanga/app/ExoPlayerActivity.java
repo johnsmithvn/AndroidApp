@@ -9,6 +9,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.graphics.Color;
+import android.util.TypedValue;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -17,6 +19,7 @@ import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.ui.DefaultTimeBar;
 
 public class ExoPlayerActivity extends AppCompatActivity {
 
@@ -25,6 +28,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
     private ImageButton btnClose, btnRotate, btnRatio;
     private boolean isZoomed = false; // track chế độ fit/zoom
     private GestureDetector gestureDetector;
+    private float currentBrightness;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +70,31 @@ public class ExoPlayerActivity extends AppCompatActivity {
         player.prepare();
         player.setPlayWhenReady(true);
 
+        // enlarge progress bar
+        DefaultTimeBar timeBar = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_progress);
+        if (timeBar != null) {
+            int barHeight = (int) TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP,
+                    8,
+                    getResources().getDisplayMetrics());
+            timeBar.setBarHeight(barHeight);
+            timeBar.setScrubberEnabledSize(barHeight);
+            timeBar.setScrubberDisabledSize(barHeight);
+            timeBar.setScrubberDraggedSize(barHeight);
+            timeBar.setTouchTargetHeight(barHeight);
+            android.view.ViewGroup.LayoutParams lp = timeBar.getLayoutParams();
+            if (lp != null) {
+                lp.height = barHeight;
+                timeBar.setLayoutParams(lp);
+            }
+        }
+
+        // dim controller background
+        View controller = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_controller);
+        if (controller != null) {
+            controller.setBackgroundColor(Color.parseColor("#80000000"));
+        }
+
         // ⚙️ Mặc định fit video
         playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
 
@@ -98,10 +127,19 @@ public class ExoPlayerActivity extends AppCompatActivity {
         // Gesture handling
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             private long currentSeekPosition;
+            private float startX;
+            private float startBrightness;
 
             @Override
             public boolean onDown(MotionEvent e) {
                 currentSeekPosition = player.getCurrentPosition();
+                startX = e.getX();
+                WindowManager.LayoutParams params = getWindow().getAttributes();
+                startBrightness = params.screenBrightness;
+                if (startBrightness < 0f) {
+                    startBrightness = 1f;
+                }
+                currentBrightness = startBrightness;
                 return true;
             }
 
@@ -151,6 +189,15 @@ public class ExoPlayerActivity extends AppCompatActivity {
                     }
                     currentSeekPosition = newPos;
                     player.seekTo(newPos);
+                    return true;
+                } else if (startX > playerView.getWidth() * 0.5f) {
+                    float change = -distanceY / playerView.getHeight();
+                    float newBrightness = currentBrightness + change;
+                    newBrightness = Math.max(0f, Math.min(1f, newBrightness));
+                    WindowManager.LayoutParams params = getWindow().getAttributes();
+                    params.screenBrightness = newBrightness;
+                    getWindow().setAttributes(params);
+                    currentBrightness = newBrightness;
                     return true;
                 }
                 return false;
