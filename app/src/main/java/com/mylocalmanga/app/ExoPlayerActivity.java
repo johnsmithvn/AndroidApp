@@ -65,10 +65,11 @@ public class ExoPlayerActivity extends AppCompatActivity {
                 float diffX = e2.getX() - e1.getX();
                 float diffY = e2.getY() - e1.getY();
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    long offsetMs = Math.max(10000, Math.min(60000, (long) (Math.abs(diffX) / 50) * 1000));
                     if (diffX > 0) {
-                        seekForward();
+                        seekBy(offsetMs);
                     } else {
-                        seekBackward();
+                        seekBy(-offsetMs);
                     }
                     return true;
                 }
@@ -78,7 +79,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
         gestureDetector.setOnDoubleTapListener(new GestureDetector.OnDoubleTapListener() {
             @Override
             public boolean onDoubleTap(MotionEvent e) {
-                seekForward();
+                seekBy(10000);
                 return true;
             }
 
@@ -89,10 +90,18 @@ public class ExoPlayerActivity extends AppCompatActivity {
 
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
-                return false;
+                if (playerView.isControllerVisible()) {
+                    playerView.hideController();
+                } else {
+                    playerView.showController();
+                }
+                return true;
             }
         });
 
+        playerView.setControllerHideOnTouch(false);
+        playerView.setControllerAutoShow(false);
+        playerView.showController();
         playerView.setOnTouchListener((v, event) -> gestureDetector.onTouchEvent(event));
 
         // ✅ Nhận dữ liệu từ Intent
@@ -157,16 +166,10 @@ public class ExoPlayerActivity extends AppCompatActivity {
         }
     }
 
-    private void seekForward() {
+    private void seekBy(long offsetMs) {
         if (player == null) return;
-        long newPosition = player.getCurrentPosition() + 10000;
+        long newPosition = player.getCurrentPosition() + offsetMs;
         if (newPosition > player.getDuration()) newPosition = player.getDuration();
-        player.seekTo(newPosition);
-    }
-
-    private void seekBackward() {
-        if (player == null) return;
-        long newPosition = player.getCurrentPosition() - 10000;
         if (newPosition < 0) newPosition = 0;
         player.seekTo(newPosition);
     }
