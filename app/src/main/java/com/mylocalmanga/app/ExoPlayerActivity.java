@@ -9,6 +9,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.Toast;
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -17,14 +21,21 @@ import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 public class ExoPlayerActivity extends AppCompatActivity {
 
     private ExoPlayer player;
     private PlayerView playerView;
     private ImageButton btnClose, btnRotate, btnRatio;
+    private ImageButton btnPrev, btnNext, btnSpeed;
     private boolean isZoomed = false; // track chế độ fit/zoom
     private GestureDetector gestureDetector;
+    private List<String> videoList = new ArrayList<>();
+    private int currentIndex = 0;
+    private final float[] playbackSpeeds = new float[]{0.5f, 1f, 1.5f, 2f};
+    private int speedIndex = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,11 +58,27 @@ public class ExoPlayerActivity extends AppCompatActivity {
         btnClose = findViewById(R.id.btn_close);
         btnRotate = findViewById(R.id.btn_rotate);
         btnRatio = findViewById(R.id.btn_ratio);
+        btnPrev = findViewById(R.id.btn_prev);
+        btnNext = findViewById(R.id.btn_next);
+        btnSpeed = findViewById(R.id.btn_speed);
 
         // ✅ Nhận dữ liệu từ Intent
         Intent intent = getIntent();
         String videoUrl = intent.getStringExtra("videoUrl");
-        String videoListJson = intent.getStringExtra("videoListJson"); // (sẽ xử lý sau)
+        String videoListJson = intent.getStringExtra("videoListJson");
+
+        if (videoListJson != null && !videoListJson.isEmpty()) {
+            Type type = new TypeToken<List<String>>(){}.getType();
+            videoList = new Gson().fromJson(videoListJson, type);
+            currentIndex = videoList.indexOf(videoUrl);
+            if (currentIndex < 0) {
+                videoList.add(videoUrl);
+                currentIndex = videoList.size() - 1;
+            }
+        } else {
+            videoList.add(videoUrl);
+            currentIndex = 0;
+        }
 
         // ❌ Nếu không có URL thì thoát
         if (videoUrl == null || videoUrl.isEmpty()) {
@@ -62,9 +89,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
         // ✅ Khởi tạo ExoPlayer
         player = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(player);
-        player.setMediaItem(MediaItem.fromUri(videoUrl));
-        player.prepare();
-        player.setPlayWhenReady(true);
+        playCurrent();
 
         // ⚙️ Mặc định fit video
         playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -161,6 +186,50 @@ public class ExoPlayerActivity extends AppCompatActivity {
             gestureDetector.onTouchEvent(event);
             return true;
         });
+
+        player.addListener(new com.google.android.exoplayer2.Player.Listener() {
+            @Override
+            public void onPlaybackStateChanged(int state) {
+                if (state == com.google.android.exoplayer2.Player.STATE_ENDED) {
+                    if (currentIndex < videoList.size() - 1) {
+                        currentIndex++;
+                        playCurrent();
+                    }
+                }
+            }
+        });
+
+        btnPrev.setOnClickListener(v -> {
+            if (currentIndex > 0) {
+                currentIndex--;
+                playCurrent();
+            }
+        });
+
+        btnNext.setOnClickListener(v -> {
+            if (currentIndex < videoList.size() - 1) {
+                currentIndex++;
+                playCurrent();
+            }
+        });
+
+        btnSpeed.setOnClickListener(v -> {
+            speedIndex = (speedIndex + 1) % playbackSpeeds.length;
+            player.setPlaybackSpeed(playbackSpeeds[speedIndex]);
+            Toast.makeText(this, playbackSpeeds[speedIndex] + "x", Toast.LENGTH_SHORT).show();
+        });
+
+        if (videoList.size() <= 1) {
+            btnPrev.setVisibility(View.GONE);
+            btnNext.setVisibility(View.GONE);
+        }
+    }
+
+    private void playCurrent() {
+        String url = videoList.get(currentIndex);
+        player.setMediaItem(MediaItem.fromUri(url));
+        player.prepare();
+        player.setPlayWhenReady(true);
     }
 
     @Override

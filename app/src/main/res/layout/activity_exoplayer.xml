@@ -35,4 +35,32 @@
         android:layout_margin="16dp"
         android:background="@android:color/transparent"
         android:src="@android:drawable/ic_menu_always_landscape_portrait" />
+
+    <ImageButton
+        android:id="@+id/btn_prev"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:background="@android:color/transparent"
+        android:src="@android:drawable/ic_media_previous" />
+
+    <ImageButton
+        android:id="@+id/btn_speed"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@android:color/transparent"
+        android:src="@android:drawable/ic_popup_sync" />
+
+    <ImageButton
+        android:id="@+id/btn_next"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="80dp"
+        android:layout_marginBottom="16dp"
+        android:background="@android:color/transparent"
+        android:src="@android:drawable/ic_media_next" />
 </FrameLayout>
