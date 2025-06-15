@@ -9,6 +9,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.graphics.Color;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -62,6 +63,11 @@ public class ExoPlayerActivity extends AppCompatActivity {
         // ✅ Khởi tạo ExoPlayer
         player = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(player);
+        // Make player controls background translucent
+        View controller = playerView.findViewById(com.google.android.exoplayer2.ui.R.id.exo_controller);
+        if (controller != null) {
+            controller.setBackgroundColor(Color.parseColor("#66000000"));
+        }
         player.setMediaItem(MediaItem.fromUri(videoUrl));
         player.prepare();
         player.setPlayWhenReady(true);
@@ -117,10 +123,22 @@ public class ExoPlayerActivity extends AppCompatActivity {
 
             @Override
             public boolean onDoubleTap(MotionEvent e) {
-                long pos = player.getCurrentPosition() + 10000;
-                long dur = player.getDuration();
-                if (dur != C.TIME_UNSET) {
-                    pos = Math.min(pos, dur);
+                float x = e.getX();
+                int width = playerView.getWidth();
+                long pos;
+                if (x < width / 2f) {
+                    // Rewind 10 seconds
+                    pos = player.getCurrentPosition() - 10000;
+                    if (pos < 0) {
+                        pos = 0;
+                    }
+                } else {
+                    // Fast forward 10 seconds
+                    pos = player.getCurrentPosition() + 10000;
+                    long dur = player.getDuration();
+                    if (dur != C.TIME_UNSET) {
+                        pos = Math.min(pos, dur);
+                    }
                 }
                 player.seekTo(pos);
                 return true;
