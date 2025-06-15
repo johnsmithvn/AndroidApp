@@ -4,6 +4,8 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
@@ -12,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
 import com.google.android.exoplayer2.ui.PlayerView;
 
@@ -21,6 +24,7 @@ public class ExoPlayerActivity extends AppCompatActivity {
     private PlayerView playerView;
     private ImageButton btnClose, btnRotate, btnRatio;
     private boolean isZoomed = false; // track chế độ fit/zoom
+    private GestureDetector gestureDetector;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,6 +90,76 @@ public class ExoPlayerActivity extends AppCompatActivity {
                             ? AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                             : AspectRatioFrameLayout.RESIZE_MODE_FIT
             );
+        });
+
+        // Auto hide controller after 3s
+        playerView.setControllerShowTimeoutMs(3000);
+
+        // Gesture handling
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            private long currentSeekPosition;
+
+            @Override
+            public boolean onDown(MotionEvent e) {
+                currentSeekPosition = player.getCurrentPosition();
+                return true;
+            }
+
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                if (playerView.isControllerVisible()) {
+                    playerView.hideController();
+                } else {
+                    playerView.showController();
+                }
+                return true;
+            }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                float x = e.getX();
+                int width = playerView.getWidth();
+                long pos;
+                if (x < width / 2f) {
+                    // Rewind 10 seconds
+                    pos = player.getCurrentPosition() - 10000;
+                    if (pos < 0) {
+                        pos = 0;
+                    }
+                } else {
+                    // Fast forward 10 seconds
+                    pos = player.getCurrentPosition() + 10000;
+                    long dur = player.getDuration();
+                    if (dur != C.TIME_UNSET) {
+                        pos = Math.min(pos, dur);
+                    }
+                }
+                player.seekTo(pos);
+                return true;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                if (Math.abs(distanceX) > Math.abs(distanceY)) {
+                    long offset = (long) (-distanceX * 100); // 100ms per pixel
+                    long newPos = currentSeekPosition + offset;
+                    long dur = player.getDuration();
+                    if (dur != C.TIME_UNSET) {
+                        newPos = Math.max(0, Math.min(newPos, dur));
+                    } else {
+                        newPos = Math.max(0, newPos);
+                    }
+                    currentSeekPosition = newPos;
+                    player.seekTo(newPos);
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        playerView.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return true;
         });
     }
 
