@@ -1,8 +1,6 @@
 package com.mylocalmanga.app;
 
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.res.Configuration;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -12,15 +10,13 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout;
-import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.ui.StyledPlayerView;
 
 public class ExoPlayerActivity extends AppCompatActivity {
 
     private ExoPlayer player;
-    private PlayerView playerView;
-    private ImageButton btnClose, btnRotate, btnRatio;
-    private boolean isZoomed = false; // track chế độ fit/zoom
+    private StyledPlayerView playerView;
+    private ImageButton btnClose;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,8 +37,6 @@ public class ExoPlayerActivity extends AppCompatActivity {
         // ✅ Gắn layout components
         playerView = findViewById(R.id.player_view);
         btnClose = findViewById(R.id.btn_close);
-        btnRotate = findViewById(R.id.btn_rotate);
-        btnRatio = findViewById(R.id.btn_ratio);
 
         // ✅ Nhận dữ liệu từ Intent
         Intent intent = getIntent();
@@ -62,31 +56,12 @@ public class ExoPlayerActivity extends AppCompatActivity {
         player.prepare();
         player.setPlayWhenReady(true);
 
-        // ⚙️ Mặc định fit video
-        playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        // ⚙️ Giao diện YouTube style
 
         // ⛔ Nút đóng
         btnClose.setOnClickListener(v -> finish());
 
-        // 🔁 Xoay ngang/dọc
-        btnRotate.setOnClickListener(v -> {
-            int orientation = getResources().getConfiguration().orientation;
-            setRequestedOrientation(
-                    orientation == Configuration.ORIENTATION_LANDSCAPE
-                            ? ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                            : ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            );
-        });
-
-        // 🔍 Đổi chế độ zoom/fit
-        btnRatio.setOnClickListener(v -> {
-            isZoomed = !isZoomed;
-            playerView.setResizeMode(
-                    isZoomed
-                            ? AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                            : AspectRatioFrameLayout.RESIZE_MODE_FIT
-            );
-        });
+        // ✨ StyledPlayerView đã hỗ trợ tự điều chỉnh orientation và zoom giống YouTube
     }
 
     @Override
