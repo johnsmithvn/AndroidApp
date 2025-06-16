@@ -18,6 +18,9 @@ import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
 
+import com.mylocalmanga.app.offline.OfflineListActivity;
+import com.mylocalmanga.app.offline.OfflineUtils;
+
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
@@ -27,6 +30,8 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout rootLayout;
     private FrameLayout fullscreenContainer;
     private ImageButton ipSwitchBtn;
+    private ImageButton offlineBtn;
+    private ImageButton downloadBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
     private final String IP_2 = "http://192.168.1.99:3000";
@@ -58,6 +63,38 @@ public class MainActivity extends AppCompatActivity {
         btnParams.setMargins(16, 64, 16, 16);
         rootLayout.addView(ipSwitchBtn, btnParams);
 
+        offlineBtn = new ImageButton(this);
+        offlineBtn.setImageResource(android.R.drawable.ic_menu_view);
+        offlineBtn.setBackgroundColor(Color.TRANSPARENT);
+        FrameLayout.LayoutParams offParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        offParams.setMargins(16, 16, 16, 16);
+        rootLayout.addView(offlineBtn, offParams);
+
+        downloadBtn = new ImageButton(this);
+        downloadBtn.setImageResource(android.R.drawable.ic_menu_save);
+        downloadBtn.setBackgroundColor(Color.TRANSPARENT);
+        FrameLayout.LayoutParams dlParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.START
+        );
+        dlParams.setMargins(16, 16, 16, 16);
+        rootLayout.addView(downloadBtn, dlParams);
+
+        offlineBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, OfflineListActivity.class);
+            startActivity(intent);
+        });
+
+        downloadBtn.setOnClickListener(v -> {
+            web.evaluateJavascript("(function(){var arr=[];document.querySelectorAll('img').forEach(function(i){arr.push(i.src);});Android.savePage(document.title,JSON.stringify(arr));})()", null);
+            Toast.makeText(MainActivity.this, "Đang lưu trang...", Toast.LENGTH_SHORT).show();
+        });
+
         setContentView(rootLayout);
 
         // ✅ Cấu hình WebView
@@ -75,6 +112,8 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 ipSwitchBtn.setVisibility(View.VISIBLE);
                 Toast.makeText(MainActivity.this, "🌐 Web lỗi: " + description, Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(MainActivity.this, OfflineListActivity.class);
+                startActivity(intent);
             }
 
             @Override
@@ -167,6 +206,11 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, ExoPlayerActivity.class);
                 intent.putExtra("videoUrl", url);
                 startActivity(intent);
+            }
+
+            @android.webkit.JavascriptInterface
+            public void savePage(String title, String urlsJson) {
+                new Thread(() -> OfflineUtils.savePage(MainActivity.this, title, urlsJson)).start();
             }
         }, "Android");
 
