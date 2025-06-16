@@ -34,6 +34,20 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <!-- 📥 Danh sách truyện đã tải -->
+        <activity
+            android:name=".offline.OfflineListActivity"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <!-- 📖 Đọc truyện offline -->
+        <activity
+            android:name=".offline.OfflineReaderActivity"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
     </application>
 
 </manifest>

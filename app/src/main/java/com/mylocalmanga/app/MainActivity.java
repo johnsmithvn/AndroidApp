@@ -27,6 +27,8 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout rootLayout;
     private FrameLayout fullscreenContainer;
     private ImageButton ipSwitchBtn;
+    private ImageButton downloadBtn;
+    private ImageButton offlineBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
     private final String IP_2 = "http://192.168.1.99:3000";
@@ -58,6 +60,32 @@ public class MainActivity extends AppCompatActivity {
         btnParams.setMargins(16, 64, 16, 16);
         rootLayout.addView(ipSwitchBtn, btnParams);
 
+        // ✅ Nút tải offline
+        downloadBtn = new ImageButton(this);
+        downloadBtn.setImageResource(android.R.drawable.ic_menu_save);
+        downloadBtn.setBackgroundColor(Color.TRANSPARENT);
+        downloadBtn.setVisibility(View.GONE);
+        FrameLayout.LayoutParams dlParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        dlParams.setMargins(16,16,16,16);
+        rootLayout.addView(downloadBtn, dlParams);
+
+        // ✅ Mở danh sách offline
+        offlineBtn = new ImageButton(this);
+        offlineBtn.setImageResource(android.R.drawable.ic_menu_gallery);
+        offlineBtn.setBackgroundColor(Color.TRANSPARENT);
+        offlineBtn.setVisibility(View.GONE);
+        FrameLayout.LayoutParams offParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.START
+        );
+        offParams.setMargins(16,16,16,16);
+        rootLayout.addView(offlineBtn, offParams);
+
         setContentView(rootLayout);
 
         // ✅ Cấu hình WebView
@@ -74,12 +102,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 ipSwitchBtn.setVisibility(View.VISIBLE);
+                offlineBtn.setVisibility(View.VISIBLE);
                 Toast.makeText(MainActivity.this, "🌐 Web lỗi: " + description, Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 ipSwitchBtn.setVisibility(View.GONE);
+                offlineBtn.setVisibility(View.GONE);
+                if (url.contains("reader") || url.contains("chapter")) {
+                    downloadBtn.setVisibility(View.VISIBLE);
+                } else {
+                    downloadBtn.setVisibility(View.GONE);
+                }
             }
         });
 
@@ -160,13 +195,30 @@ public class MainActivity extends AppCompatActivity {
             builder.show();
         });
 
-        // ✅ Giao tiếp với JS để mở ExoPlayer
+        // ✅ Nút mở danh sách offline
+        offlineBtn.setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, com.mylocalmanga.app.offline.OfflineListActivity.class));
+        });
+
+        // ✅ Nút tải ảnh offline
+        downloadBtn.setOnClickListener(v -> {
+            String js = "(function(){var imgs=Array.from(document.querySelectorAll('img')).map(i=>i.src);var title=document.title||'manga';Android.downloadImages(JSON.stringify(imgs),title);})();";
+            web.evaluateJavascript(js, null);
+            Toast.makeText(MainActivity.this, \"Đang tải truyện...\", Toast.LENGTH_SHORT).show();
+        });
+
+        // ✅ Giao tiếp với JS để mở ExoPlayer & tải offline
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
             public void openExoPlayer(String url) {
                 Intent intent = new Intent(MainActivity.this, ExoPlayerActivity.class);
                 intent.putExtra("videoUrl", url);
                 startActivity(intent);
+            }
+
+            @android.webkit.JavascriptInterface
+            public void downloadImages(String json, String title) {
+                new Thread(() -> doDownload(json, title)).start();
             }
         }, "Android");
 
@@ -183,5 +235,24 @@ public class MainActivity extends AppCompatActivity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    private void doDownload(String json, String title) {
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String[] urls = gson.fromJson(json, String[].class);
+        java.io.File baseDir = new java.io.File(getExternalFilesDir(null), "offline_manga");
+        if (!baseDir.exists()) baseDir.mkdirs();
+        java.io.File mangaDir = new java.io.File(baseDir, title.replaceAll("[^a-zA-Z0-9._-]", "_"));
+        if (!mangaDir.exists()) mangaDir.mkdirs();
+        for (int i = 0; i < urls.length; i++) {
+            try {
+                java.io.File tmp = com.bumptech.glide.Glide.with(this).downloadOnly().load(urls[i]).submit().get();
+                java.io.File dest = new java.io.File(mangaDir, "page_" + i + ".jpg");
+                java.nio.file.Files.copy(tmp.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        runOnUiThread(() -> Toast.makeText(this, "Tải xong " + title, Toast.LENGTH_LONG).show());
     }
 }
