@@ -197,9 +197,10 @@ public class MainActivity extends AppCompatActivity {
 
         // ✅ Nút tải chương hiện tại thông qua API folder-cache
         downloadBtn.setOnClickListener(v -> {
+            String currentUrl = web.getUrl();
             new Thread(() -> {
                 try {
-                    Uri page = Uri.parse(web.getUrl());
+                    Uri page = Uri.parse(currentUrl);
                     String path = page.getQueryParameter("path");
                     String root = page.getQueryParameter("root");
                     String key = page.getQueryParameter("key");
