@@ -19,6 +19,7 @@ import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -34,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout rootLayout;
     private FrameLayout fullscreenContainer;
     private ImageButton ipSwitchBtn;
+    private ImageButton downloadBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
     private final String IP_2 = "http://192.168.1.99:3000";
@@ -65,6 +67,20 @@ public class MainActivity extends AppCompatActivity {
         btnParams.setMargins(16, 64, 16, 16);
         rootLayout.addView(ipSwitchBtn, btnParams);
 
+        // ✅ Nút tải offline
+        downloadBtn = new ImageButton(this);
+        downloadBtn.setImageResource(android.R.drawable.stat_sys_download);
+        downloadBtn.setBackgroundColor(Color.TRANSPARENT);
+        downloadBtn.setVisibility(View.GONE);
+
+        FrameLayout.LayoutParams dlParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        dlParams.setMargins(16, 16, 16, 32);
+        rootLayout.addView(downloadBtn, dlParams);
+
         setContentView(rootLayout);
 
         // ✅ Cấu hình WebView
@@ -81,12 +97,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 ipSwitchBtn.setVisibility(View.VISIBLE);
+                downloadBtn.setVisibility(View.GONE);
                 Toast.makeText(MainActivity.this, "🌐 Web lỗi: " + description, Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 ipSwitchBtn.setVisibility(View.GONE);
+                if (url.contains("reader")) {
+                    downloadBtn.setVisibility(View.VISIBLE);
+                } else {
+                    downloadBtn.setVisibility(View.GONE);
+                }
             }
         });
 
@@ -171,6 +193,26 @@ public class MainActivity extends AppCompatActivity {
             builder.show();
         });
 
+        // ✅ Nút tải chương hiện tại
+        downloadBtn.setOnClickListener(v -> {
+            String js = "(function(){var imgs=document.querySelectorAll('img');var arr=[];for(var i=0;i<imgs.length;i++){if(imgs[i].src)arr.push(imgs[i].src);}return JSON.stringify(arr);})()";
+            web.evaluateJavascript(js, value -> {
+                if (value == null) return;
+                if (value.startsWith("\"")) {
+                    value = value.substring(1, value.length() - 1).replace("\\\"", "\"").replace("\\n", "").replace("\\", "");
+                }
+                Gson gson = new Gson();
+                Type type = new TypeToken<List<String>>(){}.getType();
+                List<String> urls = gson.fromJson(value, type);
+                String folder = sanitizeFileName(web.getTitle());
+                if (folder.isEmpty()) {
+                    folder = "chapter" + System.currentTimeMillis();
+                }
+                OfflineDownloader.downloadImages(MainActivity.this, folder, urls, () ->
+                        Toast.makeText(MainActivity.this, "Tải xong " + folder, Toast.LENGTH_SHORT).show());
+            });
+        });
+
         // ✅ Giao tiếp với JS để mở ExoPlayer
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
@@ -203,5 +245,10 @@ public class MainActivity extends AppCompatActivity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    private String sanitizeFileName(String name) {
+        if (name == null) return "";
+        return Pattern.compile("[\\\\/:*?\"<>|]").matcher(name).replaceAll("_");
     }
 }
