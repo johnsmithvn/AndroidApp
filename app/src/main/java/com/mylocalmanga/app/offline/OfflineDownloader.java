@@ -35,8 +35,13 @@ public class OfflineDownloader {
                 for (String urlStr : urls) {
                     URL url = new URL(urlStr);
                     HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    String ext = ".jpg";
+                    int dot = urlStr.lastIndexOf('.');
+                    if (dot != -1 && dot > urlStr.lastIndexOf('/')) {
+                        ext = urlStr.substring(dot);
+                    }
                     try (InputStream is = conn.getInputStream();
-                         FileOutputStream fos = new FileOutputStream(new File(dir, index + ".jpg"))) {
+                         FileOutputStream fos = new FileOutputStream(new File(dir, index + ext))) {
                         byte[] buffer = new byte[8192];
                         int len;
                         while ((len = is.read(buffer)) != -1) {

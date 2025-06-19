@@ -20,6 +20,15 @@ import android.content.SharedPreferences;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.regex.Pattern;
+import android.net.Uri;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.util.ArrayList;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -192,26 +201,58 @@ public class MainActivity extends AppCompatActivity {
             });
             builder.show();
         });
-
-        // ✅ Nút tải chương hiện tại
+        // ✅ Nút tải chương hiện tại sử dụng API folder-cache
         downloadBtn.setOnClickListener(v -> {
-            String js = "(function(){var imgs=document.querySelectorAll('img');var arr=[];for(var i=0;i<imgs.length;i++){if(imgs[i].src)arr.push(imgs[i].src);}return JSON.stringify(arr);})()";
-            web.evaluateJavascript(js, value -> {
-                if (value == null) return;
-                if (value.startsWith("\"")) {
-                    value = value.substring(1, value.length() - 1).replace("\\\"", "\"").replace("\\n", "").replace("\\", "");
+            String pageUrl = web.getUrl();
+            Uri uri = Uri.parse(pageUrl);
+            String base = uri.getScheme() + "://" + uri.getHost() + (uri.getPort() != -1 ? ":" + uri.getPort() : "");
+            String path = uri.getQueryParameter("path");
+            if (path == null) {
+                Toast.makeText(this, "Không lấy được path", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String key = uri.getQueryParameter("key");
+            String root = uri.getQueryParameter("root");
+
+            String api = base + "/api/manga/folder-cache?mode=path";
+            if (key != null) api += "&key=" + Uri.encode(key);
+            if (root != null) api += "&root=" + Uri.encode(root);
+            api += "&path=" + Uri.encode(path);
+
+            new Thread(() -> {
+                try {
+                    URL url = new URL(api);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    InputStream is = conn.getInputStream();
+                    StringBuilder sb = new StringBuilder();
+                    try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+                        String line;
+                        while ((line = br.readLine()) != null) {
+                            sb.append(line);
+                        }
+                    }
+                    conn.disconnect();
+                    JSONObject obj = new JSONObject(sb.toString());
+                    JSONArray arr = obj.getJSONArray("images");
+                    List<String> urls = new ArrayList<>();
+                    for (int i = 0; i < arr.length(); i++) {
+                        urls.add(base + arr.getString(i));
+                    }
+                    String folder = sanitizeFileName(Uri.decode(path));
+                    int slash = folder.lastIndexOf('/');
+                    if (slash != -1) folder = folder.substring(slash + 1);
+
+                    List<String> finalUrls = urls;
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Đang tải " + folder, Toast.LENGTH_SHORT).show());
+                    OfflineDownloader.downloadImages(MainActivity.this, folder, finalUrls, () ->
+                            Toast.makeText(MainActivity.this, "Tải xong " + folder, Toast.LENGTH_SHORT).show());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Lỗi tải offline", Toast.LENGTH_SHORT).show());
                 }
-                Gson gson = new Gson();
-                Type type = new TypeToken<List<String>>(){}.getType();
-                List<String> urls = gson.fromJson(value, type);
-                String folder = sanitizeFileName(web.getTitle());
-                if (folder.isEmpty()) {
-                    folder = "chapter" + System.currentTimeMillis();
-                }
-                OfflineDownloader.downloadImages(MainActivity.this, folder, urls, () ->
-                        Toast.makeText(MainActivity.this, "Tải xong " + folder, Toast.LENGTH_SHORT).show());
-            });
+            }).start();
         });
+
 
         // ✅ Giao tiếp với JS để mở ExoPlayer
         web.addJavascriptInterface(new Object() {
