@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -17,8 +18,17 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import java.io.File;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.regex.Pattern;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.mylocalmanga.app.offline.OfflineDownloader;
+import com.mylocalmanga.app.offline.OfflineListActivity;
 
 public class MainActivity extends AppCompatActivity {
     private WebView web;
@@ -27,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout rootLayout;
     private FrameLayout fullscreenContainer;
     private ImageButton ipSwitchBtn;
+    private ImageButton downloadBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
     private final String IP_2 = "http://192.168.1.99:3000";
@@ -58,6 +69,20 @@ public class MainActivity extends AppCompatActivity {
         btnParams.setMargins(16, 64, 16, 16);
         rootLayout.addView(ipSwitchBtn, btnParams);
 
+        // ✅ Nút tải offline
+        downloadBtn = new ImageButton(this);
+        downloadBtn.setImageResource(android.R.drawable.stat_sys_download);
+        downloadBtn.setBackgroundColor(Color.TRANSPARENT);
+        downloadBtn.setVisibility(View.GONE);
+
+        FrameLayout.LayoutParams dlParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        dlParams.setMargins(16, 16, 16, 32);
+        rootLayout.addView(downloadBtn, dlParams);
+
         setContentView(rootLayout);
 
         // ✅ Cấu hình WebView
@@ -74,12 +99,18 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 ipSwitchBtn.setVisibility(View.VISIBLE);
+                downloadBtn.setVisibility(View.GONE);
                 Toast.makeText(MainActivity.this, "🌐 Web lỗi: " + description, Toast.LENGTH_SHORT).show();
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 ipSwitchBtn.setVisibility(View.GONE);
+                if (url.contains("reader")) {
+                    downloadBtn.setVisibility(View.VISIBLE);
+                } else {
+                    downloadBtn.setVisibility(View.GONE);
+                }
             }
         });
 
@@ -143,10 +174,14 @@ public class MainActivity extends AppCompatActivity {
 
         // ✅ Nút đổi IP
         ipSwitchBtn.setOnClickListener(v -> {
-            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)"};
+            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)", "📂 Truyện offline"};
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Chọn server:");
             builder.setItems(options, (dialog, which) -> {
+                if (which == 2) {
+                    startActivity(new Intent(MainActivity.this, OfflineListActivity.class));
+                    return;
+                }
                 String selectedIp = (which == 0) ? IP_1 : IP_2;
 
                 // ✅ Lưu IP đã chọn
@@ -160,6 +195,18 @@ public class MainActivity extends AppCompatActivity {
             builder.show();
         });
 
+        // ✅ Nút tải chương hiện tại cho đọc offline
+        downloadBtn.setOnClickListener(v -> {
+            // Lấy toàn bộ ảnh trên trang reader bằng JavaScript và lưu offline
+            String script = "(function(){" +
+                    "var imgs=document.querySelectorAll('img');" +
+                    "var arr=[];for(var i=0;i<imgs.length;i++){arr.push(imgs[i].src);}" +
+                    "var p=new URL(location.href).searchParams.get('path');" +
+                    "Android.downloadOffline(p?p.split('/').pop():'chapter'+Date.now(), JSON.stringify(arr));" +
+                    "})()";
+            web.evaluateJavascript(script, null);
+        });
+
         // ✅ Giao tiếp với JS để mở ExoPlayer
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
@@ -167,6 +214,16 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, ExoPlayerActivity.class);
                 intent.putExtra("videoUrl", url);
                 startActivity(intent);
+            }
+
+            @android.webkit.JavascriptInterface
+            public void downloadOffline(String folder, String jsonPaths) {
+                String safeFolder = sanitizeFileName(folder);
+                Gson gson = new Gson();
+                Type type = new TypeToken<List<String>>(){}.getType();
+                List<String> urls = gson.fromJson(jsonPaths, type);
+                OfflineDownloader.downloadImages(MainActivity.this, safeFolder, urls, () ->
+                        Toast.makeText(MainActivity.this, "Tải xong " + safeFolder, Toast.LENGTH_SHORT).show());
             }
         }, "Android");
 
@@ -183,5 +240,10 @@ public class MainActivity extends AppCompatActivity {
         } else {
             super.onBackPressed();
         }
+    }
+
+    private String sanitizeFileName(String name) {
+        if (name == null) return "";
+        return Pattern.compile("[\\\\/:*?\"<>|]").matcher(name).replaceAll("_");
     }
 }
