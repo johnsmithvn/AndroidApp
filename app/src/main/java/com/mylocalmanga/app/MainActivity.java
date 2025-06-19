@@ -17,8 +17,15 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import java.lang.reflect.Type;
+import java.util.List;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.mylocalmanga.app.offline.OfflineDownloader;
+import com.mylocalmanga.app.offline.OfflineListActivity;
 
 public class MainActivity extends AppCompatActivity {
     private WebView web;
@@ -143,10 +150,14 @@ public class MainActivity extends AppCompatActivity {
 
         // ✅ Nút đổi IP
         ipSwitchBtn.setOnClickListener(v -> {
-            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)"};
+            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)", "📂 Truyện offline"};
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Chọn server:");
             builder.setItems(options, (dialog, which) -> {
+                if (which == 2) {
+                    startActivity(new Intent(MainActivity.this, OfflineListActivity.class));
+                    return;
+                }
                 String selectedIp = (which == 0) ? IP_1 : IP_2;
 
                 // ✅ Lưu IP đã chọn
@@ -167,6 +178,15 @@ public class MainActivity extends AppCompatActivity {
                 Intent intent = new Intent(MainActivity.this, ExoPlayerActivity.class);
                 intent.putExtra("videoUrl", url);
                 startActivity(intent);
+            }
+
+            @android.webkit.JavascriptInterface
+            public void downloadOffline(String folder, String jsonPaths) {
+                Gson gson = new Gson();
+                Type type = new TypeToken<List<String>>(){}.getType();
+                List<String> urls = gson.fromJson(jsonPaths, type);
+                OfflineDownloader.downloadImages(MainActivity.this, folder, urls, () ->
+                        Toast.makeText(MainActivity.this, "Tải xong " + folder, Toast.LENGTH_SHORT).show());
             }
         }, "Android");
 
