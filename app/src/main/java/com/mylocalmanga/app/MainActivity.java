@@ -219,9 +219,10 @@ public class MainActivity extends AppCompatActivity {
                     if (path != null) {
                         folder = sanitizeFileName(new File(path).getName());
                     }
+                    final String folderName = folder;
 
-                    OfflineDownloader.downloadImages(MainActivity.this, folder, urls,
-                            () -> Toast.makeText(MainActivity.this, "Tải xong " + folder, Toast.LENGTH_SHORT).show());
+                    OfflineDownloader.downloadImages(MainActivity.this, folderName, urls,
+                            () -> Toast.makeText(MainActivity.this, "Tải xong " + folderName, Toast.LENGTH_SHORT).show());
                 } catch (Exception e) {
                     e.printStackTrace();
                     runOnUiThread(() -> Toast.makeText(MainActivity.this, "Lỗi tải", Toast.LENGTH_SHORT).show());
