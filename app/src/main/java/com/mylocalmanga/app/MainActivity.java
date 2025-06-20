@@ -18,12 +18,11 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
-import android.widget.EditText;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.ArrayList;
+import android.net.Uri;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -54,7 +53,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREF_NAME = "AppPrefs";
     private static final String KEY_LAST_IP = "last_used_ip";
-    private static final String OFFLINE_ROOT = DownloadWorker.OFFLINE_ROOT;
     private static final int STORAGE_REQUEST = 1001;
     private String pendingFolder;
 
@@ -210,26 +208,22 @@ public class MainActivity extends AppCompatActivity {
 
         // ✅ Tải ảnh offline
         downloadBtn.setOnClickListener(v -> {
-            final EditText input = new EditText(this);
-            input.setHint("Folder path");
-            new AlertDialog.Builder(this)
-                    .setTitle("Tải offline")
-                    .setView(input)
-                    .setPositiveButton("OK", (d, w) -> requestPermissionAndDownload(input.getText().toString()))
-                    .setNegativeButton("Hủy", null)
-                    .show();
+            String folder = getCurrentFolder();
+            if (folder == null || folder.isEmpty()) {
+                Toast.makeText(this, "Không lấy được folder", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            requestPermissionAndDownload(folder);
         });
 
         // ✅ Mở thư mục offline
         viewOfflineBtn.setOnClickListener(v -> {
-            final EditText input = new EditText(this);
-            input.setHint("Folder name");
-            new AlertDialog.Builder(this)
-                    .setTitle("Mở offline")
-                    .setView(input)
-                    .setPositiveButton("OK", (d, w) -> openOffline(input.getText().toString()))
-                    .setNegativeButton("Hủy", null)
-                    .show();
+            String folder = getCurrentFolder();
+            if (folder == null || folder.isEmpty()) {
+                Toast.makeText(this, "Không lấy được folder", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            openOffline(folder);
         });
 
         // ✅ Giao tiếp với JS để mở ExoPlayer
@@ -300,6 +294,21 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> Toast.makeText(this, "Lỗi tải danh sách", Toast.LENGTH_SHORT).show());
             }
         }).start();
+    }
+
+    private String getCurrentFolder() {
+        String url = web.getUrl();
+        if (url == null) return null;
+        Uri uri = Uri.parse(url);
+        String path = uri.getQueryParameter("path");
+        if (path == null) path = uri.getQueryParameter("folder");
+        if (path == null) {
+            path = uri.getPath();
+            if (path != null && path.startsWith("/")) {
+                path = path.substring(1);
+            }
+        }
+        return path;
     }
 
     private void openOffline(String folderName) {
