@@ -17,6 +17,21 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.SharedPreferences;
+import android.widget.EditText;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.ArrayList;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkManager;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -27,6 +42,8 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout rootLayout;
     private FrameLayout fullscreenContainer;
     private ImageButton ipSwitchBtn;
+    private ImageButton downloadBtn;
+    private ImageButton viewOfflineBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
     private final String IP_2 = "http://192.168.1.99:3000";
@@ -57,6 +74,30 @@ public class MainActivity extends AppCompatActivity {
         );
         btnParams.setMargins(16, 64, 16, 16);
         rootLayout.addView(ipSwitchBtn, btnParams);
+
+        // ✅ Nút tải offline
+        downloadBtn = new ImageButton(this);
+        downloadBtn.setImageResource(android.R.drawable.stat_sys_download);
+        downloadBtn.setBackgroundColor(Color.TRANSPARENT);
+        FrameLayout.LayoutParams downloadParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.START
+        );
+        downloadParams.setMargins(16, 16, 16, 80);
+        rootLayout.addView(downloadBtn, downloadParams);
+
+        // ✅ Nút xem offline
+        viewOfflineBtn = new ImageButton(this);
+        viewOfflineBtn.setImageResource(android.R.drawable.ic_menu_gallery);
+        viewOfflineBtn.setBackgroundColor(Color.TRANSPARENT);
+        FrameLayout.LayoutParams viewParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.END
+        );
+        viewParams.setMargins(16, 16, 16, 80);
+        rootLayout.addView(viewOfflineBtn, viewParams);
 
         setContentView(rootLayout);
 
@@ -160,6 +201,30 @@ public class MainActivity extends AppCompatActivity {
             builder.show();
         });
 
+        // ✅ Tải ảnh offline
+        downloadBtn.setOnClickListener(v -> {
+            final EditText input = new EditText(this);
+            input.setHint("Folder path");
+            new AlertDialog.Builder(this)
+                    .setTitle("Tải offline")
+                    .setView(input)
+                    .setPositiveButton("OK", (d, w) -> startDownload(input.getText().toString()))
+                    .setNegativeButton("Hủy", null)
+                    .show();
+        });
+
+        // ✅ Mở thư mục offline
+        viewOfflineBtn.setOnClickListener(v -> {
+            final EditText input = new EditText(this);
+            input.setHint("Folder name");
+            new AlertDialog.Builder(this)
+                    .setTitle("Mở offline")
+                    .setView(input)
+                    .setPositiveButton("OK", (d, w) -> openOffline(input.getText().toString()))
+                    .setNegativeButton("Hủy", null)
+                    .show();
+        });
+
         // ✅ Giao tiếp với JS để mở ExoPlayer
         web.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
@@ -174,6 +239,42 @@ public class MainActivity extends AppCompatActivity {
         String lastIp = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
                 .getString(KEY_LAST_IP, IP_1);
         web.loadUrl(lastIp);
+    }
+
+    private void startDownload(String folderPath) {
+        String lastIp = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
+                .getString(KEY_LAST_IP, IP_1);
+        String api = lastIp + "/api/folder-cache?path=" + URLEncoder.encode(folderPath, StandardCharsets.UTF_8);
+
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder().url(api).build();
+        new Thread(() -> {
+            try {
+                Response response = client.newCall(request).execute();
+                if (response.isSuccessful()) {
+                    String json = response.body().string();
+                    java.lang.reflect.Type listType = new TypeToken<List<String>>(){}.getType();
+                    List<String> urls = new Gson().fromJson(json, listType);
+                    Data inputData = new Data.Builder()
+                            .putStringArray("imageUrls", urls.toArray(new String[0]))
+                            .putString("folderName", folderPath)
+                            .build();
+                    OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(DownloadWorker.class)
+                            .setInputData(inputData)
+                            .build();
+                    WorkManager.getInstance(this).enqueue(work);
+                    runOnUiThread(() -> Toast.makeText(this, "Đang tải " + urls.size() + " ảnh", Toast.LENGTH_SHORT).show());
+                }
+            } catch (IOException e) {
+                runOnUiThread(() -> Toast.makeText(this, "Lỗi tải danh sách", Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private void openOffline(String folderName) {
+        Intent intent = new Intent(this, OfflineReaderActivity.class);
+        intent.putExtra("folderName", folderName);
+        startActivity(intent);
     }
 
     @Override
