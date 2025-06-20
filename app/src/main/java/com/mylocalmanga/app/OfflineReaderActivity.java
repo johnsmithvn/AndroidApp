@@ -1,7 +1,6 @@
 package com.mylocalmanga.app;
 
 import android.os.Bundle;
-import android.os.Environment;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,7 +27,8 @@ public class OfflineReaderActivity extends AppCompatActivity {
         setContentView(recyclerView);
 
         String folderName = getIntent().getStringExtra("folderName");
-        File folder = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), folderName);
+        File root = new File(getExternalFilesDir(null), DownloadWorker.OFFLINE_ROOT);
+        File folder = new File(root, folderName);
         File[] files = folder.listFiles();
         List<File> list = new ArrayList<>();
         if (files != null) {

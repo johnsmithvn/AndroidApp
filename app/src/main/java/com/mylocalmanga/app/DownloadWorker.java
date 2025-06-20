@@ -17,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class DownloadWorker extends Worker {
+    public static final String OFFLINE_ROOT = "offline_manga";
 
     public DownloadWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
@@ -31,7 +32,8 @@ public class DownloadWorker extends Worker {
             return Result.failure();
         }
 
-        File outDir = new File(getApplicationContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES), folderName);
+        File root = new File(getApplicationContext().getExternalFilesDir(null), OFFLINE_ROOT);
+        File outDir = new File(root, folderName);
         if (!outDir.exists()) {
             outDir.mkdirs();
         }

@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Build;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -34,6 +35,9 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.content.pm.PackageManager;
 
 public class MainActivity extends AppCompatActivity {
     private WebView web;
@@ -50,6 +54,9 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String PREF_NAME = "AppPrefs";
     private static final String KEY_LAST_IP = "last_used_ip";
+    private static final String OFFLINE_ROOT = DownloadWorker.OFFLINE_ROOT;
+    private static final int STORAGE_REQUEST = 1001;
+    private String pendingFolder;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -208,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
             new AlertDialog.Builder(this)
                     .setTitle("Tải offline")
                     .setView(input)
-                    .setPositiveButton("OK", (d, w) -> startDownload(input.getText().toString()))
+                    .setPositiveButton("OK", (d, w) -> requestPermissionAndDownload(input.getText().toString()))
                     .setNegativeButton("Hủy", null)
                     .show();
         });
@@ -239,6 +246,30 @@ public class MainActivity extends AppCompatActivity {
         String lastIp = getSharedPreferences(PREF_NAME, MODE_PRIVATE)
                 .getString(KEY_LAST_IP, IP_1);
         web.loadUrl(lastIp);
+    }
+
+    private void requestPermissionAndDownload(String folder) {
+        pendingFolder = folder;
+        if (Build.VERSION.SDK_INT >= 23) {
+            String perm = (Build.VERSION.SDK_INT >= 33)
+                    ? android.Manifest.permission.READ_MEDIA_IMAGES
+                    : android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{perm}, STORAGE_REQUEST);
+                return;
+            }
+        }
+        startDownload(folder);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == STORAGE_REQUEST && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (pendingFolder != null) {
+                startDownload(pendingFolder);
+            }
+        }
     }
 
     private void startDownload(String folderPath) {
