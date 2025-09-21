@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Cho phép toàn bộ app tin tưởng chứng chỉ trong User CA store -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" /> <!-- Giữ các chứng chỉ hệ thống -->
+            <certificates src="user" />   <!-- Thêm chứng chỉ do bạn import -->
+        </trust-anchors>
+    </base-config>
+</network-security-config>

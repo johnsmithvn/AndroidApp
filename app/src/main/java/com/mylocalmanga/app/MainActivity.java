@@ -16,7 +16,6 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.Toast;
 import android.app.AlertDialog;
-import android.content.SharedPreferences;
 
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -29,7 +28,11 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton ipSwitchBtn;
 
     private final String IP_1 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
-    private final String IP_2 = "http://192.168.1.99:3000";
+    private final String IP_2 = "http://desktop-v88j9e0.tail2b3d3b.ts.net:3001";
+    private final String IP_3 = "https://desktop-v88j9e0.tail2b3d3b.ts.net:3000";
+    private final String IP_4 = "https://desktop-v88j9e0.tail2b3d3b.ts.net:3001";
+    private final String IP_5 = "http://192.168.1.99:3000";
+    private final String IP_6 = "http://192.168.1.99:3001";
 
     private static final String PREF_NAME = "AppPrefs";
     private static final String KEY_LAST_IP = "last_used_ip";
@@ -69,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        // ✅ Bắt lỗi trang
+        // ✅ Bắt lỗi trang + bỏ qua SSL error
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
@@ -80,6 +83,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 ipSwitchBtn.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view,
+                                           android.webkit.SslErrorHandler handler,
+                                           android.net.http.SslError error) {
+                // ⚠️ Bỏ qua cảnh báo SSL cho HTTPS tự ký
+                handler.proceed();
             }
         });
 
@@ -143,21 +154,18 @@ public class MainActivity extends AppCompatActivity {
 
         // ✅ Nút đổi IP
         ipSwitchBtn.setOnClickListener(v -> {
-            String[] options = {"📡 Dùng IP Tailscale", "💻 Dùng Localhost (127.0.0.1)"};
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-            builder.setTitle("Chọn server:");
-            builder.setItems(options, (dialog, which) -> {
-                String selectedIp = (which == 0) ? IP_1 : IP_2;
+            String[] options = {"tailscale http","tailscale https","tailscale https (port 3000)", "tailscale https (port 3001)", "local http", "local http (port 3001)"};
+            String[] urls    = {IP_1, IP_2, IP_3, IP_4, IP_5, IP_6};
 
-                // ✅ Lưu IP đã chọn
-                getSharedPreferences(PREF_NAME, MODE_PRIVATE)
-                        .edit()
-                        .putString(KEY_LAST_IP, selectedIp)
-                        .apply();
-
-                web.loadUrl(selectedIp);
-            });
-            builder.show();
+            new AlertDialog.Builder(this)
+                    .setTitle("Chọn server:")
+                    .setItems(options, (d, which) -> {
+                        String url = urls[which];
+                        getSharedPreferences(PREF_NAME, MODE_PRIVATE).edit()
+                                .putString(KEY_LAST_IP, url).apply();
+                        web.loadUrl(url);
+                    })
+                    .show();
         });
 
         // ✅ Giao tiếp với JS để mở ExoPlayer
