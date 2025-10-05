@@ -71,6 +71,15 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowContentAccess(true);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        // ✅ THÊM MỚI: Enable zoom support
+        webSettings.setSupportZoom(true);
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false); // Ẩn nút zoom, chỉ dùng pinch-to-zoom
+        
+        // ✅ THÊM MỚI: Enable viewport meta tag
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
 
         // ✅ Bắt lỗi trang + bỏ qua SSL error
         web.setWebViewClient(new WebViewClient() {
