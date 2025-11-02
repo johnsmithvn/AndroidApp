@@ -21,3 +21,15 @@ local.properties
 /build
 /captures
 .externalNativeBuild
+/build
+*.iml
+.gradle
+/keystore.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.env
+.vscode/
+*.jks

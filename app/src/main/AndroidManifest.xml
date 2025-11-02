@@ -3,6 +3,10 @@
 
     <!-- 🌐 Cho phép truy cập Internet (cần thiết cho WebView hoặc stream video) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- 📥 Cho phép ghi file xuống storage (cần cho download) -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:icon="@mipmap/ic_launcher"

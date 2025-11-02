@@ -15,15 +15,27 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+ // 1) Đọc thông tin từ keystore.properties (tại root project)
+    def keystorePropertiesFile = rootProject.file("keystore.properties")
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
 
+    // 2) Khai báo signing và build type release
     signingConfigs {
         release {
-            storeFile file("mykey2.jks")        // 🔹 đường dẫn file keystore
-            storePassword "dh6c5.it"            // 🔹 thay bằng password bạn nhập
-            keyAlias "myalias"                // 🔹 thay bằng alias bạn nhập (vd: shu)
-            keyPassword "dh6c5.it"              // 🔹 thay bằng password alias
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
         }
     }
+
+
+
 
     buildTypes {
         release {
